@@ -17,7 +17,8 @@ function mv(f) { return CH[f.ch].moves[f.move] || GEN[f.move]; }
 function startMove(S, f, name) {
   const c = CH[f.ch];
   if (!f.grounded && c.moves[name + 'Air']) name += 'Air';
-  f.state = 'attack'; f.t = 0; f.move = name; f.mf = 0; f.hitIds = []; f.charge = 0; f.chgDone = false; f.loops = 0;
+  if (f.state !== 'attack') f.chain = 0;
+  f.state = 'attack'; f.t = 0; f.move = name; f.mf = 0; f.hitIds = []; f.charge = 0; f.chgDone = false; f.loops = 0; f.conn = 0; f.gcM = false;
   const m = mv(f); if (m.start) m.start(S, f, m);
 }
 function endMove(S, f) {
@@ -51,8 +52,8 @@ function chain(stage) {
 const CH = [
 /* 0 — EMBER, the Forge Tinker: balanced all-rounder */
 {
-  name: 'EMBER', title: 'Forge Tinker', style: 'Balanced all-rounder', w: 34, h: 62, wt: 98, jumps: 2,
-  walk: 2.7, run: 6.2, acc: 0.9, air: 4.7, aacc: 0.38, grav: 0.48, fall: 8.5, ff: 13, jump: 12.2, sh: 7.6, dj: 11.6, reach: 55, pm: 1.3,
+  name: 'EMBER', title: 'Forge Tinker', style: 'Balanced all-rounder', w: 34, h: 62, wt: 98, jumps: 3,
+  walk: 2.7, run: 6.2, acc: 1.4, air: 4.9, aacc: 0.52, grav: 0.48, fall: 8.5, ff: 13, jump: 12.2, sh: 7.6, dj: 11.6, reach: 55, pm: 1.3,
   spec: ['Ember Skip', 'Mirror Fan', 'Flare Riser', 'Steam Vent'],
   moves: {
     jab: { t: 16, hits: [H(3, 5, 22, 38, 46, 38, 13, 2.5, 75, 14, 30)] },
@@ -82,8 +83,8 @@ const CH = [
 },
 /* 1 — FLICK, the Storm Sprite: tiny, extremely fast */
 {
-  name: 'FLICK', title: 'Storm Sprite', style: 'Lightning-fast rushdown', w: 28, h: 44, wt: 79, jumps: 2,
-  walk: 3.3, run: 8.5, acc: 1.5, air: 5.7, aacc: 0.55, grav: 0.52, fall: 9, ff: 14.5, jump: 12.8, sh: 8, dj: 12.6, reach: 42, pm: 1.0,
+  name: 'FLICK', title: 'Storm Sprite', style: 'Lightning-fast rushdown', w: 28, h: 44, wt: 79, jumps: 3,
+  walk: 3.3, run: 8.5, acc: 2.0, air: 5.9, aacc: 0.72, grav: 0.52, fall: 9, ff: 14.5, jump: 12.8, sh: 8, dj: 12.6, reach: 42, pm: 1.0,
   spec: ['Spark Crawler', 'Bolt Ram', 'Blink Dash', 'Skyfall'],
   moves: {
     jab: { t: 10, lb: 'hd', hits: [H(2, 3, 14, 26, 30, 26, 12, 1.4, 70, 10, 15)] },
@@ -128,8 +129,8 @@ const CH = [
 },
 /* 2 — ASTRA, the Star Knight: precision plasma-blade fighter */
 {
-  name: 'ASTRA', title: 'Star Knight', style: 'Precision blade spacing', w: 32, h: 70, wt: 90, jumps: 2,
-  walk: 2.5, run: 6.6, acc: 0.95, air: 4.5, aacc: 0.36, grav: 0.44, fall: 8, ff: 12.5, jump: 12.4, sh: 7.6, dj: 11.4, reach: 80, pm: 1.2,
+  name: 'ASTRA', title: 'Star Knight', style: 'Precision blade spacing', w: 32, h: 70, wt: 90, jumps: 3,
+  walk: 2.5, run: 6.6, acc: 1.4, air: 4.7, aacc: 0.5, grav: 0.44, fall: 8, ff: 12.5, jump: 12.4, sh: 7.6, dj: 11.4, reach: 80, pm: 1.2,
   spec: ['Piercing Star', 'Comet Waltz', 'Rising Nova', 'Riposte'],
   moves: {
     jab: { t: 22, hits: [H(5, 8, 34, 64, 74, 34, 15, 5, 65, 22, 45, tp({ v: [70, 62] }))] },
@@ -167,8 +168,8 @@ const CH = [
 },
 /* 3 — MOSS, the Stone Golem: heavyweight grappler */
 {
-  name: 'MOSS', title: 'Stone Golem', style: 'Heavyweight grappler', w: 54, h: 84, wt: 127, jumps: 2,
-  walk: 2.1, run: 5.2, acc: 0.6, air: 4.2, aacc: 0.3, grav: 0.5, fall: 9, ff: 14, jump: 11.8, sh: 7.2, dj: 11, reach: 75, pm: 1.6,
+  name: 'MOSS', title: 'Stone Golem', style: 'Heavyweight grappler', w: 54, h: 84, wt: 127, jumps: 3,
+  walk: 2.1, run: 5.2, acc: 1.0, air: 4.4, aacc: 0.42, grav: 0.5, fall: 9, ff: 14, jump: 11.8, sh: 7.2, dj: 11, reach: 75, pm: 1.6,
   spec: ['Quarry Punch', 'Stake Bash', 'Rock Tornado', 'Tremor'],
   moves: {
     jab: { t: 24, hits: [H(5, 8, 36, 50, 72, 50, 20, 6, 60, 22, 50, { fx: 'rock' })] },
@@ -220,17 +221,21 @@ const MOVE_NAMES = { nspecial: 0, sspecial: 1, uspecial: 2, dspecial: 3 };
 
 /* ---------- stages ---------- */
 const STAGES = [
-  { name: 'Skyhold', sub: 'One deck, two floaters', blast: { l: -1150, r: 1150, t: -900, b: 520 },
-    plats: [{ x: -420, y: 0, w: 840, h: 70, solid: 1, ledge: 1 }, { x: -300, y: -135, w: 190, soft: 1 }, { x: 110, y: -135, w: 190, soft: 1 }] },
-  { name: 'Zenith Deck', sub: 'Flat. No excuses', blast: { l: -1200, r: 1200, t: -900, b: 520 },
-    plats: [{ x: -500, y: 0, w: 1000, h: 60, solid: 1, ledge: 1 }] },
-  { name: 'Neon City', sub: 'Moving platforms', blast: { l: -1250, r: 1250, t: -950, b: 540 },
-    plats: [{ x: -360, y: 0, w: 720, h: 60, solid: 1, ledge: 1 }, { x: -600, y: -80, w: 160, soft: 1 }, { x: 440, y: -80, w: 160, soft: 1 },
+  { name: 'Skyhold', sub: 'One deck, two floaters, sheer cliff walls', blast: { l: -1150, r: 1150, t: -900, b: 560 },
+    plats: [{ x: -430, y: 0, w: 860, h: 700, solid: 1, ledge: 1 }, { x: -310, y: -135, w: 190, soft: 1 }, { x: 120, y: -135, w: 190, soft: 1 }] },
+  { name: 'Zenith Deck', sub: 'Flat. No excuses', blast: { l: -1250, r: 1250, t: -900, b: 560 },
+    plats: [{ x: -520, y: 0, w: 1040, h: 700, solid: 1, ledge: 1 }] },
+  { name: 'Neon City', sub: 'Floating towers to climb, moving platforms', blast: { l: -1300, r: 1300, t: -980, b: 580 },
+    plats: [{ x: -380, y: 0, w: 760, h: 700, solid: 1, ledge: 1 },
+      { x: -760, y: -250, w: 100, h: 360, solid: 1 }, { x: 660, y: -250, w: 100, h: 360, solid: 1 },
+      { x: -590, y: -70, w: 150, soft: 1 }, { x: 440, y: -70, w: 150, soft: 1 },
       { x: -270, y: -150, w: 140, soft: 1, mv: { ax: 0, ay: 60, p: 300 } }, { x: 130, y: -150, w: 140, soft: 1, mv: { ax: 0, ay: -60, p: 300 } },
-      { x: -75, y: -290, w: 150, soft: 1, mv: { ax: 240, ay: 0, p: 480 } }] },
-  { name: 'Volcano Arena', sub: 'Lava eruptions', hazard: 1, blast: { l: -1150, r: 1150, t: -900, b: 500 },
-    plats: [{ x: -300, y: 0, w: 600, h: 60, solid: 1, ledge: 1 }, { x: -540, y: -50, w: 160, soft: 1 }, { x: 380, y: -50, w: 160, soft: 1 },
-      { x: -210, y: -150, w: 130, soft: 1 }, { x: 80, y: -150, w: 130, soft: 1 }, { x: -70, y: -285, w: 140, soft: 1 }] },
+      { x: -75, y: -300, w: 150, soft: 1, mv: { ax: 250, ay: 0, p: 480 } }] },
+  { name: 'Volcano Arena', sub: 'Lava eruptions, wall-jump shafts', hazard: 1, blast: { l: -1250, r: 1250, t: -900, b: 540 },
+    plats: [{ x: -300, y: 0, w: 600, h: 700, solid: 1, ledge: 1 },
+      { x: -700, y: 70, w: 230, h: 640, solid: 1, ledge: 1 }, { x: 470, y: 70, w: 230, h: 640, solid: 1, ledge: 1 },
+      { x: -210, y: -150, w: 130, soft: 1 }, { x: 80, y: -150, w: 130, soft: 1 }, { x: -70, y: -290, w: 140, soft: 1 },
+      { x: -640, y: -90, w: 130, soft: 1 }, { x: 510, y: -90, w: 130, soft: 1 }] },
 ];
 function getPlats(S) {
   const st = STAGES[S.stage], out = [];
@@ -251,12 +256,12 @@ const INSTANT = { heart: 1, boots: 1, gauntlet: 1, bubble: 1 };
 /* ---------- game creation ---------- */
 function newFighter(i, s) {
   return { id: i, ch: s.ch, cos: s.cos || 0, team: s.team || 0, name: s.name || ('P' + (i + 1)), cpu: s.cpu === undefined ? -1 : s.cpu,
-    x: 0, y: 0, vx: 0, vy: 0, kvx: 0, kvy: 0, face: 1, grounded: false, plat: -1, jumps: 2, pct: 0, stocks: 3, kos: 0, falls: 0, dmg: 0, sd: 0,
+    x: 0, y: 0, vx: 0, vy: 0, kvx: 0, kvy: 0, face: 1, grounded: false, plat: -1, jumps: 3, pct: 0, stocks: 3, kos: 0, falls: 0, dmg: 0, sd: 0,
     state: 'respawn', t: 0, move: '', mf: 0, hitIds: [], charge: 0, chgDone: false, loops: 0, hitlag: 0, hitstun: 0, stun: 0, lag: 0,
     shield: 50, invuln: 0, stored: 0, victim: -1, by: -1, grabT: 0, pumT: 0, bury: 0, ledgeS: 0, lx: 0, ly: 0, ledgeCd: 0, ledgeUsed: false,
     ff: false, dodged: false, upUsed: false, stall: false, drop: 0, ctr: 0, ax: 0, ay: 0, dn: 0, dashV: 0, runT: 0, parry: 0,
     inp: { x: 0, y: 0, b: 0 }, pb: 0, px: 0, py: 0, buf: { 1: 0, 2: 0, 4: 0, 8: 0, 16: 0, 32: 0 },
-    spd: 0, pow: 0, armor: 0, item: -1, itemCd: 0, dead: 0, out: false, outAt: 0, lastBy: -1, lastF: -9999, aiT: 0, aiS: 0, aiJ: 0, aiX: 0 };
+    spd: 0, pow: 0, armor: 0, item: -1, itemCd: 0, dead: 0, out: false, outAt: 0, lastBy: -1, lastF: -9999, aiT: 0, aiS: 0, aiJ: 0, aiX: 0, wallS: 0, wallF: -9, wallCd: 0, wallN: 0, conn: 0, chain: 0, cmb: 0, hitF: -99, djT: 0, gc: false, gcM: false, chaseD: 0 };
 }
 function newGame(cfg, slots, seed) {
   const S = { f: 0, rng: (seed || 12345) >>> 0, stage: cfg.stage | 0, cfg: Object.assign({ mode: 'stock', stocks: 3, time: 180, items: true, itemFreq: 2, hazards: true, teams: false, ff: false, training: false }, cfg),
@@ -279,7 +284,7 @@ function alive(f) { return !f.out && f.dead <= 0; }
 function invul(f) {
   if (f.invuln > 0) return true;
   const s = f.state, t = f.t;
-  return (s === 'roll' && t >= 4 && t <= 17) || (s === 'spot' && t >= 3 && t <= 18) || (s === 'airdodge' && t >= 3 && t <= 26) || s === 'climb' || s === 'respawn';
+  return (s === 'roll' && t >= 2 && t <= 9) || (s === 'spot' && t >= 3 && t <= 18) || (s === 'airdodge' && t >= 3 && t <= 26) || s === 'climb' || s === 'respawn';
 }
 function rectOf(f) {
   const c = CH[f.ch]; let h = c.h;
@@ -342,6 +347,8 @@ function applyHit(S, att, vic, h, dir, px, py, mult, melee) {
     setState(vic, 'shieldstun'); vic.stun = Math.floor(d * 0.8 + 3); vic.hitlag = hl; vic.kvx = dir * Math.min(8, 1 + d * 0.35);
     ev(S, { k: 'shield', x: px, y: py }); return 2;
   }
+  if (!h.fix) vic.cmb = (vic.state === 'hitstun' || S.f - vic.hitF < 24) ? vic.cmb + 1 : 1;
+  vic.hitF = S.f;
   vic.pct = Math.min(999, vic.pct + d);
   if (att && att !== vic) att.dmg += d;
   if (att && att !== vic) { vic.lastBy = att.id; vic.lastF = S.f; }
@@ -363,12 +370,12 @@ function applyHit(S, att, vic, h, dir, px, py, mult, melee) {
   let kx = cx * v, ky = cy * v;
   if (vic.grounded) { if (ky > 0.5) ky = -ky * 0.8; if (ky < -1.2) vic.grounded = false; else ky = 0; }
   vic.kvx = kx; vic.kvy = ky; vic.vx *= 0.2; vic.vy = 0; vic.ff = false;
-  setState(vic, 'hitstun'); vic.hitstun = Math.max(3, Math.floor(kb * 0.4));
+  setState(vic, 'hitstun'); vic.hitstun = Math.max(3, Math.floor(kb * 0.4) + (h.fix ? 0 : 6));
   vic.upUsed = false; vic.dodged = false; vic.ledgeUsed = false; vic.stall = false; vic.bury = 0;
   let hl = h.fix ? 2 : Math.min(20, Math.floor(d / 2.6 + 3)); if (h.fx === 'elec' && !h.fix) hl = Math.floor(hl * 1.4);
   vic.hitlag = hl; if (melee && att) att.hitlag = hl;
   if (kb > 70) dropItem(S, vic);
-  ev(S, { k: 'hit', x: px, y: py, d, kb, fx: h.fx, id: vic.id, kx, ky, tip: mult > 1.3 && h.tp ? 1 : 0, vx: vic.x, vy: vic.y });
+  ev(S, { k: 'hit', x: px, y: py, d, kb, fx: h.fx, id: vic.id, cmb: h.fix ? 0 : vic.cmb, kx, ky, tip: mult > 1.3 && h.tp ? 1 : 0, vx: vic.x, vy: vic.y });
   return 1;
 }
 
@@ -404,7 +411,8 @@ function useItem(S, f, forceThrow) {
   if (it.type === 'boomerang') { it.vy = d === 'u' ? -13 : d === 'd' ? 11 : -0.5; it.ret = 0; it.ox = it.vx; it.oy = it.vy; }
   startMove(S, f, 'itemthrow'); return true;
 }
-function groundActions(S, f) {
+function startDash(S, f, ax, chase) { setState(f, 'roll'); f.ax = ax; f.face = ax; f.chaseD = chase ? 1 : 0; ev(S, { k: 'dust', x: f.x, y: f.y, big: 1 }); }
+function groundActions(S, f, noShield) {
   const I = f.inp, d = pickMoveDir(I), [ax, ay] = stickDir(I);
   if (take(f, GR)) { if (f.item >= 0) return useItem(S, f, true); if (ax) f.face = ax; startMove(S, f, 'grab'); return true; }
   if (take(f, B)) { const n = specialName(S, f); if (n) { startMove(S, f, n); return true; } }
@@ -419,7 +427,8 @@ function groundActions(S, f) {
     if (ay > 0 && p && p.soft) { f.grounded = false; f.drop = 14; f.y += 3; f.vy = 2; setState(f, 'air'); f.jumps = CH[f.ch].jumps - 1; return true; }
     setState(f, 'jumpsquat'); return true;
   }
-  if ((I.b & SH) && f.shield > 5) { setState(f, 'shield'); return true; }
+  if (take(f, SH) && ax) { startDash(S, f, ax, noShield); return true; }
+  if (!noShield && (I.b & SH) && f.shield > 5) { setState(f, 'shield'); return true; }
   return false;
 }
 function airActions(S, f) {
@@ -433,10 +442,10 @@ function airActions(S, f) {
   }
   if (take(f, GR) && f.item >= 0) return useItem(S, f, true);
   if (take(f, J) && f.jumps > 0) {
-    f.jumps--; f.vy = -c.dj; f.ff = false; if (ax) { f.vx = ax * c.air * 0.9; } ev(S, { k: 'djump', x: f.x, y: f.y }); return true;
+    f.jumps--; f.vy = -c.dj; f.ff = false; f.djT = 16; if (ax) { f.vx = ax * c.air * 0.9; } ev(S, { k: 'djump', x: f.x, y: f.y }); return true;
   }
   if (take(f, SH) && !f.dodged) {
-    f.dodged = true; setState(f, 'airdodge'); const m = Math.hypot(I.x, I.y);
+    f.dodged = true; setState(f, 'airdodge'); const m = Math.hypot(I.x, I.y); f.gc = m <= 0.4; f.chaseD = 0;
     if (m > 0.4) { f.vx = I.x / m * 9; f.vy = I.y / m * 9; } else { f.vx *= 0.5; f.vy = 0; }
     f.ff = false; return true;
   }
@@ -450,14 +459,14 @@ function airDrift(f, c, k) {
 }
 function onLand(S, f) {
   const c = CH[f.ch];
-  f.grounded = true; f.jumps = c.jumps; f.upUsed = false; f.dodged = false; f.ledgeUsed = false; f.stall = false;
+  f.grounded = true; f.jumps = c.jumps; f.upUsed = false; f.dodged = false; f.ledgeUsed = false; f.stall = false; f.wallN = 0; f.djT = 0;
   const wasFF = f.ff; f.ff = false; f.drop = 0;
   ev(S, { k: 'dust', x: f.x, y: f.y });
   const s = f.state;
-  if (s === 'air') { setState(f, 'land'); f.lag = wasFF ? 5 : 3; }
+  if (s === 'air' || s === 'wall') { setState(f, 'land'); f.lag = wasFF ? 4 : 2; }
   else if (s === 'helpless') { setState(f, 'land'); f.lag = 12; }
   else if (s === 'airdodge') { setState(f, 'land'); f.lag = 10; }
-  else if (s === 'attack') { const m = mv(f); if (m.air || m.landEnd) { if (f.mf > 3 || m.landEnd) { if (m.landEnd && f.mf < 8) return; setState(f, 'land'); f.lag = m.lag || 10; } else { setState(f, 'land'); f.lag = 4; } } }
+  else if (s === 'attack') { const m = mv(f); if (m.air || m.landEnd) { if (f.mf > 3 || m.landEnd) { if (m.landEnd && f.mf < 8) return; setState(f, 'land'); f.lag = Math.round((m.lag || 10) * (m.air ? 0.7 : 1)); } else { setState(f, 'land'); f.lag = 3; } } }
   else if (s === 'carry') { }
 }
 const GROUND_ST = { idle: 1, walk: 1, crouch: 1, land: 1, jumpsquat: 1, shielddrop: 1 };
@@ -473,6 +482,8 @@ function phys(S, f, P) {
     let p = P[f.plat];
     if (p) { f.x += p.dx; f.y = p.y; }
     f.x += f.vx + f.kvx;
+    for (let qi = 0; qi < P.length; qi++) { const q = P[qi]; if (!q.solid || qi === f.plat) continue;
+      if (f.x + hw > q.x && f.x - hw < q.x + q.w && f.y > q.y + 8 && f.y - c.h < q.y + q.h) { const left = f.x < q.x + q.w / 2; f.x = left ? q.x - hw : q.x + q.w + hw; if (f.state === 'hitstun') f.kvx *= -0.6; else { f.vx = 0; f.kvx = 0; } } }
     if (f.kvy < 0 && f.state === 'hitstun') f.grounded = false;
     else {
       f.kvy = 0; f.vy = 0;
@@ -508,14 +519,14 @@ function phys(S, f, P) {
       if (py - c.h >= p.y + p.h - 2 && dy < 0) { f.y = p.y + p.h + c.h; if (f.state === 'hitstun') f.kvy = Math.abs(f.kvy) * 0.8; f.vy = Math.max(0, f.vy); }
       else {
         const left = f.x < p.x + p.w / 2; f.x = left ? p.x - hw : p.x + p.w + hw;
-        if (f.state === 'hitstun' && Math.abs(f.kvx) > 5) { f.kvx *= -0.75; ev(S, { k: 'dust', x: f.x, y: f.y - 20, big: 1 }); } else if (left ? f.vx + f.kvx > 0 : f.vx + f.kvx < 0) { f.vx = 0; f.kvx = 0; }
+        if (f.state === 'hitstun' && Math.abs(f.kvx) > 5) { f.kvx *= -0.75; ev(S, { k: 'dust', x: f.x, y: f.y - 20, big: 1 }); } else { if (left ? f.vx + f.kvx > 0 : f.vx + f.kvx < 0) { f.vx = 0; f.kvx = 0; } if (f.state !== 'hitstun') { f.wallS = left ? 1 : -1; f.wallF = S.f; } }
       }
     }
   }
 }
 function tryLedge(S, f, P) {
   if (f.grounded || f.ledgeCd > 0 || f.vy + f.kvy < -1 || f.inp.y > 0.6) return;
-  const s = f.state; if (!(s === 'air' || s === 'helpless' || (s === 'attack' && mv(f).helpless && f.mf > 14))) return;
+  const s = f.state; if (!(s === 'air' || s === 'helpless' || s === 'wall' || (s === 'attack' && mv(f).helpless && f.mf > 14))) return;
   const c = CH[f.ch], top = f.y - c.h;
   for (const p of P) {
     if (!p.ledge) continue;
@@ -526,6 +537,7 @@ function tryLedge(S, f, P) {
         if (S.p.some(o => o !== f && o.state === 'ledge' && o.lx === lx && o.ly === p.y)) continue;
         setState(f, 'ledge'); f.ledgeS = side; f.lx = lx; f.ly = p.y; f.x = lx + side * (c.w / 2 + 2); f.y = p.y + c.h * 0.88;
         f.vx = f.vy = f.kvx = f.kvy = 0; f.face = -side; f.jumps = Math.max(f.jumps, 1); f.upUsed = false; f.dodged = false; f.ff = false; f.stall = false;
+        f.wallN = 0;
         if (!f.ledgeUsed) { f.invuln = 36; f.ledgeUsed = true; }
         ev(S, { k: 'ledge', x: lx, y: p.y }); return;
       }
@@ -561,7 +573,7 @@ function upd(S, f, P) {
     }
     f.px = I.x; f.py = I.y; return;
   }
-  if (f.invuln > 0) f.invuln--; if (f.ledgeCd > 0) f.ledgeCd--; if (f.spd > 0) f.spd--; if (f.pow > 0) f.pow--; if (f.itemCd > 0) f.itemCd--; if (f.parry > 0) f.parry--;
+  if (f.invuln > 0) f.invuln--; if (f.ledgeCd > 0) f.ledgeCd--; if (f.spd > 0) f.spd--; if (f.pow > 0) f.pow--; if (f.itemCd > 0) f.itemCd--; if (f.parry > 0) f.parry--; if (f.wallCd > 0) f.wallCd--; if (f.djT > 0) f.djT--;
   if (f.state !== 'shield' && f.state !== 'shieldstun' && f.shield < 50) f.shield = Math.min(50, f.shield + 0.07);
   if (f.hitlag > 0) { f.hitlag--; f.px = I.x; f.py = I.y; return; }
   const [ax, ay] = stickDir(I);
@@ -576,14 +588,15 @@ function upd(S, f, P) {
       if (Math.abs(I.x) > 0.25) {
         f.face = sgn(I.x); if (f.state !== 'walk') setState(f, 'walk');
         const full = Math.abs(I.x) > 0.75; f.runT = full ? f.runT + 1 : 0;
-        const target = (f.runT > 5 ? c.run : c.walk * Math.max(0.5, Math.abs(I.x))) * spdM * f.face;
+        if (full && flickX) { f.vx = f.face * c.run * 1.3 * spdM; ev(S, { k: 'dust', x: f.x, y: f.y }); }
+        const target = (full ? c.run : c.walk * Math.max(0.5, Math.abs(I.x))) * spdM * f.face;
         if (Math.abs(target - f.vx) <= c.acc) f.vx = target; else f.vx += sgn(target - f.vx) * c.acc;
       } else { f.runT = 0; f.vx *= 0.76; if (Math.abs(f.vx) < 0.1) f.vx = 0; if (f.state !== 'idle') setState(f, 'idle'); }
       break;
     }
     case 'jumpsquat': {
       f.vx *= 0.9;
-      if (f.t >= 4) { f.grounded = false; f.vy = (I.b & J) ? -c.jump : -c.sh; f.jumps = c.jumps - 1; if (ax) f.vx = clamp(f.vx + ax * 1.5, -c.run, c.run); setState(f, 'air'); ev(S, { k: 'dust', x: f.x, y: f.y }); }
+      if (f.t >= 3) { f.grounded = false; f.vy = (I.b & J) ? -c.jump : -c.sh; f.jumps = c.jumps - 1; if (ax) f.vx = clamp(f.vx + ax * 1.5, -c.run, c.run); setState(f, 'air'); ev(S, { k: 'dust', x: f.x, y: f.y }); }
       break;
     }
     case 'air': { if (!airActions(S, f)) airDrift(f, c); else airDrift(f, c); break; }
@@ -591,6 +604,7 @@ function upd(S, f, P) {
     case 'land': { f.vx *= 0.8; if (f.t >= f.lag) { setState(f, 'idle'); } break; }
     case 'attack': {
       const m = mv(f); let hold = false;
+      if (f.gcM && !f.grounded) { f.noG = true; f.vy = 0; f.vx *= 0.9; }
       if (m.chg && f.mf === m.chg[0] && !f.chgDone) { if ((I.b & m.chg[2]) && f.charge < m.chg[1]) { f.charge++; hold = true; } else { f.chgDone = true; if (f.charge > 10) ev(S, { k: 'release', x: f.x, y: f.y - c.h / 2 }); } }
       if (!hold) {
         f.mf++;
@@ -598,6 +612,15 @@ function upd(S, f, P) {
       }
       if (f.grounded) { if (!m.keepV) f.vx *= 0.82; } else if (m.air || m.any) { if (!m.helpless || f.mf > 24) airDrift(f, c, m.air ? 1 : 0.5); }
       if (m.on && f.state === 'attack' && mv(f) === m) m.on(S, f, m);
+      if (f.state === 'attack' && mv(f) === m && f.conn && f.chain < 3 && !m.th && !m.helpless && !m.counter && m.hits.length && !m.hits[0].grab) {
+        let le = 0; for (const h of m.hits) if (h.e > le) le = h.e;
+        if (f.mf > le + 1) {
+          const ch = f.chain; let acted;
+          if (f.grounded) acted = groundActions(S, f, true);
+          else { acted = airActions(S, f); if (acted && f.state === 'attack' && mv(f) === m && f.mf > 0) setState(f, 'air'); if (f.state === 'airdodge') f.chaseD = 1; }
+          if (acted) { f.chain = ch + 1; break; }
+        }
+      }
       if (f.state === 'attack' && mv(f) === m) {
         if (m.th && f.mf === m.th.rel) {
           const v = S.p[f.victim];
@@ -623,10 +646,20 @@ function upd(S, f, P) {
     }
     case 'shielddrop': { f.vx *= 0.7; if (f.t >= 7) setState(f, 'idle'); break; }
     case 'shieldstun': { if (f.t >= f.stun) { f.state = 'shield'; f.t = 10; } break; }
-    case 'roll': { f.vx = (f.t >= 4 && f.t <= 20) ? f.ax * 8.2 : 0; if (f.t === 14) f.face = -f.ax; if (f.t >= 28) { f.vx = 0; setState(f, 'idle'); } break; }
+    case 'roll': {
+      f.vx = f.t <= 11 ? f.ax * 10.5 : f.vx * 0.8;
+      if (f.t >= (f.chaseD ? 7 : 12)) { const cd = f.chaseD; f.chaseD = 0; if (groundActions(S, f, true)) break; f.chaseD = cd; }
+      if (f.t >= 20) { f.chaseD = 0; setState(f, Math.abs(I.x) > 0.25 ? 'walk' : 'idle'); }
+      break;
+    }
     case 'spot': { f.vx = 0; if (f.t >= 24) setState(f, 'idle'); break; }
     case 'airdodge': {
       if (f.t < 18) { f.noG = true; f.vx *= 0.9; f.vy *= 0.9; } else airDrift(f, c, 0.6);
+      if (f.gc && f.t >= 2 && f.t <= 22) {
+        const a = take(f, A), cs = !a && take(f, C);
+        if (a || cs) { const d = pickMoveDir(I); if (ax) f.face = ax; startMove(S, f, a ? (d === 'u' ? 'utilt' : d === 'd' ? 'dtilt' : d === 'f' ? 'ftilt' : 'jab') : (d === 'u' ? 'usmash' : d === 'd' ? 'dsmash' : 'fsmash')); f.gcM = true; f.vy = 0; break; }
+      }
+      if (f.chaseD && f.t >= 10 && airActions(S, f)) { if (f.state === 'airdodge') setState(f, 'air'); f.chaseD = 0; break; }
       if (f.t >= 36) setState(f, 'air'); break;
     }
     case 'hitstun': {
@@ -695,13 +728,36 @@ function upd(S, f, P) {
       f.face = -g.face; f.grounded = false;
       break;
     }
+    case 'wall': {
+      doPhys = false; const hw = c.w / 2; let on = false;
+      for (const p of P) if (p.solid && (f.wallS > 0 ? Math.abs(f.x + hw - p.x) < 5 : Math.abs(f.x - hw - (p.x + p.w)) < 5) && f.y - 8 > p.y && f.y - c.h + 8 < p.y + p.h) { on = true; f.x = f.wallS > 0 ? p.x - hw : p.x + p.w + hw; }
+      f.face = -f.wallS; f.vx = 0; f.kvx = f.kvy = 0;
+      if (!on) { setState(f, 'air'); doPhys = true; break; }
+      if (take(f, J)) {
+        f.vy = -c.jump * Math.max(0.62, 1 - 0.09 * (f.wallN - 1)); f.vx = -f.wallS * (ay < 0 ? 2.4 : ax === f.wallS ? 3.4 : 6.2); f.wallCd = 9; f.ff = false;
+        setState(f, 'air'); ev(S, { k: 'walljump', x: f.x + f.wallS * hw, y: f.y - c.h / 2, d: -f.wallS }); doPhys = true; break;
+      }
+      if (ax === -f.wallS && f.t > 5) { f.vx = -f.wallS * 2.5; f.wallCd = 12; setState(f, 'air'); doPhys = true; break; }
+      if (airActions(S, f)) { f.wallCd = 12; if (f.state === 'wall') setState(f, 'air'); doPhys = true; break; }
+      f.vy = I.y > 0.6 ? 7 : f.t > 140 ? 4.5 : f.t < 10 ? 0.4 : 1.5; f.y += f.vy;
+      if (f.t % 6 === 0 && f.vy > 1) ev(S, { k: 'slide', x: f.x + f.wallS * hw, y: f.y - c.h * 0.4 });
+      tryLedge(S, f, P);
+      break;
+    }
     case 'respawn': {
       doPhys = false; f.vx = f.vy = 0;
       if (f.t > 20 && (ax || ay || I.b) || f.t > 170) { setState(f, 'air'); f.invuln = 100; }
       break;
     }
   }
-  if (doPhys && f.state !== 'grabbed' && f.state !== 'ledge' && f.state !== 'climb' && f.state !== 'respawn') { phys(S, f, P); tryLedge(S, f, P); }
+  if (doPhys && f.state !== 'grabbed' && f.state !== 'ledge' && f.state !== 'climb' && f.state !== 'respawn') {
+    phys(S, f, P); tryLedge(S, f, P);
+    if ((f.state === 'air' || f.state === 'helpless') && !f.grounded && f.wallF === S.f && f.wallCd <= 0 && f.vy > -5 && I.y < 0.6 && I.x * f.wallS > -0.4) {
+      setState(f, 'wall'); f.vx = 0; f.vy = Math.min(f.vy, 1); f.ff = false; f.djT = 0;
+      if (f.wallN < 5) { f.jumps = Math.max(f.jumps, c.jumps - 1); f.upUsed = false; f.dodged = false; }
+      f.wallN++;
+    }
+  }
   f.px = I.x; f.py = I.y;
 }
 
@@ -733,6 +789,7 @@ function melee(S) {
         const dir = h.rad ? (sgn(v.x - f.x) || f.face) : f.face;
         const r = applyHit(S, f, v, hh, dir, clamp(pos[0], R.x, R.x + R.w), clamp(pos[1], R.y, R.y + R.h), mu, true);
         if (r) f.hitIds.push(key);
+        if (r === 1) { f.conn = 1; f.dodged = false; }
         if (f.state !== 'attack' || mv(f) !== m) break;
       }
       if (f.state !== 'attack' || mv(f) !== m) break;
@@ -873,7 +930,8 @@ function ai(S, f, P) {
   if (f.aiJ > 0) { f.aiJ--; b |= J; }
   f.aiT--;
   const off = !f.grounded && (f.x < main.x - 6 || f.x > main.x + main.w + 6 || f.y > main.y + 20);
-  if (f.state === 'ledge') {
+  if (f.state === 'wall') { y = -1; b &= ~SH; if (f.t > 3 && !(prev.b & J)) b |= J; }
+  else if (f.state === 'ledge') {
     if (f.t > 14 + (10 - lv) * 3) { const r = rnd(S); if (r < 0.5) y = -1; else if (r < 0.8) b = J; else b = SH; }
   } else if (f.state === 'grabbing' || f.state === 'carry') {
     if (f.t > 12 && f.aiT <= 0) { f.aiT = 10; const r = rnd(S); if (r < 0.35) b = A; else if (r < 0.55) { x = f.face; if (f.state === 'carry') b = A; } else if (r < 0.75) { x = -f.face; if (f.state === 'carry') b = A; } else if (r < 0.9) { y = -1; if (f.state === 'carry') b = A; } else { y = 1; if (f.state === 'carry') b = A; } }
